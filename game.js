@@ -87,68 +87,7 @@ class Scene {
   }
 }
 
-class GameScene extends Scene {
-  constructor() {
-    super();
-    this.character = new Character();
-    this.character.init();
-    this.children.push(this.character);
-  }
 
-  init() {
-
-  }
-
-  update(timeDelta) {
-    super.update(timeDelta);
-  }
-
-  render(ctx) {
-    super.render(ctx)
-  }
-}
-class GameObject {
-  constructr() { }
-  init() { }
-  update(timeDelta) { }
-  render(ctx) { }
-}
-class Character extends GameObject {
-  constructor() {
-    // 생성자에서는 캐릭터에 사용될 이미지를 만들고 애니메이션들을 생성해야 한다.
-    // 이 내용은 아래의 '캐릭터 애니메이션' 부분에서 다룰테니 기둘!
-    super();
-  }
-
-  init() {
-    // 여기서는 각종 변수를 초기화해야 한다.
-    // 일단 현재 위치를 나타내는 변수를 만들어봤다.
-    this.x = 0;
-    this.y = 0;
-    this.force = { x: 0, y: 0 };
-    this.gravity = 10;
-  }
-
-  update(timeDelta) {
-    // 캐릭터의 각종 상태를 변경하는 부분.
-    
-    this.force.y += this.gravity * timeDelta;
-    this.x += this.force.x;
-    this.y += this.force.y;
-  }
-
-  render(ctx) {
-    // 여기서 그려주면 된다.
-    // 일단은 현재 위치에 반지름 20픽셀 짜리 빨간 원을 그리는 코드를 넣어보자.
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.fillStyle = "red";
-    ctx.beginPath();
-    ctx.arc(0, 0, 20, 0, 2 * Math.PI); // 각도는 늘 라디안이라는 점을 잊지 말자!
-    ctx.fill();
-    ctx.restore();
-  }
-}
 
 const game = new Game(document.getElementById('canv'));
 game.push(new GameScene());
