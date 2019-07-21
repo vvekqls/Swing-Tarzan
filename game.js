@@ -6,8 +6,8 @@ const SpriteDefs = {
     { x: 275, y: 278, w: 40, h: 39, origin: { x: 30, y: 20 } },//fall
     { x: 235, y: 278, w: 40, h: 39, origin: { x: 30, y: 20 } },//fall
     { x: 442, y: 278, w: 40, h: 39, origin: { x: 30, y: 20 } },//fall
-    { x: 40, y: 80, w: 40, h: 41, origin: { x: 30, y: 20 } },
-    { x: 80, y: 80, w: 40, h: 41, origin: { x: 30, y: 20 } },
+    { x: 286, y: 140, w: 45, h: 45, origin: { x: 30, y: 20 } },
+    { x: 335, y: 140, w: 43, h: 45, origin: { x: 30, y: 20 } },
     { x: 0, y: 122, w: 40, h: 41, origin: { x: 30, y: 20 } },
     { x: 40, y: 122, w: 40, h: 40, origin: { x: 30, y: 20 } },
     { x: 80, y: 122, w: 40, h: 40, origin: { x: 30, y: 20 } },
@@ -24,10 +24,11 @@ const SpriteDefs = {
 const AnimationDefs = {
   "character": {
     "spin": [{ frame: 0, duration: 0.05 }, { frame: 0, duration: 0.05 }],
-    "forward": [{ frame: 2, duration: 0.08 }, { frame: 2, duration: 0.08 }, { frame: 2, duration: 0.08 }, { frame: 2, duration: 0.08 }],
+    "forward": [{ frame: 2, duration: 0.75 }, { frame: 2, duration: 0.50 }, { frame: 2, duration: 0.08 }, { frame: 2, duration: 0.08 }],
     "nutral": [{ frame: 2, duration: 0.15 }, { frame: 2, duration: 0.05 }, { frame: 2, duration: 0.10 }, { frame: 2, duration: 0.10 }],
     "backward": [{ frame: 0, duration: 0.10 }, { frame: 0, duration: 0.05 }, { frame: 0, duration: 0.05 }, { frame: 0, duration: 0.05 }],
     "fall": [{ frame: 2, duration: 0.05 }, { frame: 3, duration: 0.05 }, { frame: 3, duration: 0.05 }, { frame: 4, duration: 0.05 }],
+    "web": [{ frame: 6, duration: 1 }, { frame: 6, duration: 1 }, { frame: 6, duration: 0.05 }, { frame: 6, duration: 0.05 }],
     "sword": [{ frame: 14, duration: 1 }],
     "magnet_field": [{ frame: 15, duration: 0.05 }, { frame: 16, duration: 0.05 }, { frame: 17, duration: 0.05 }, { frame: 18, duration: 0.05 }]
   }
@@ -270,24 +271,32 @@ class GameScene extends Scene {
   constructor() {
     super();
     this.character = new Character();
-    this.character.init();
+    this.background = new Background();
+    this.children.push(this.background);
     this.children.push(this.character);
   }
 
   init() {
-    //this.character.setPivot({x:240, y:0});
+    this.background.init();
+    this.character.init();
+    this.cameraX = 250;
   }
 
   update(timeDelta, key) {
     super.update(timeDelta);
+    this.cameraX = Math.max(this.cameraX, this.character.x);
+    this.background.x = this.cameraX - 250;
     if (key === 32) {
-      this.character.setPivot({ x: 240, y: 0 });
+      // this.currentAnimation = "web"
+      let tx = Math.cos(Math.PI / 4) * this.character.y + this.character.x;
+      this.character.setPivot({ x: tx, y: 0 });
     }
 
   }
 
   render(ctx) {
     ctx.save();
+    ctx.translate(-this.cameraX + 250, 0);
     super.render(ctx);
     ctx.restore();
 
@@ -340,6 +349,7 @@ class Character extends GameObject {
       this.accel = (-1.3 * (this.force.x + this.force.y) / this.pLen) * Math.sin(this.angle);
       this.update(0);
     } else {
+      // this.currentAnimation = "web"
       this.pivot = null;
       this.pLen = 0;
       this.position = null;
@@ -349,15 +359,16 @@ class Character extends GameObject {
     }
   }
 
-  update(timeDelta) {
+  update(timeDelta, key) {
     // 캐릭터의 각종 상태를 변경하는 부분.
     if (this.pivot === null) {
       // 줄이 걸려있지 않을때
-      this.currentAnimation = "spin"; //현재 애니메이션은 spin 으로
+      this.currentAnimation = "web"; //현재 애니메이션은 spin 으로
       this.force.y += this.gravity * timeDelta;
       this.x += this.force.x;
       this.y += this.force.y;
     } else {
+      // this.currentAnimation = "web"
       // 줄이 걸려있을 때
       // 중력은 작용하고 있지만 각가속도 계산에 들어가므로 force.y 에 별도로 더해줄 필요가 없다.
       let ang = this.angle;
@@ -401,10 +412,10 @@ class Character extends GameObject {
     // 일단은 현재 위치에 반지름 20픽셀 짜리 빨간 원을 그리는 코드를 넣어보자.
     ctx.save();
     if (this.pivot !== null) {
-      ctx.strokeStyle = "blue";
+      ctx.strokeStyle = "white";
       ctx.beginPath();
-      ctx.moveTo(this.pivot.x, this.pivot.y);
-      ctx.lineTo(this.pivot.x + this.position.x, this.pivot.y + this.position.y);
+      ctx.moveTo(this.pivot.x , this.pivot.y);
+      ctx.lineTo(this.pivot.x + 7 + this.position.x, this.pivot.y + this.position.y);
       ctx.stroke();
     }
     ctx.translate(this.x, this.y);
@@ -420,6 +431,26 @@ class Character extends GameObject {
   }
 }
 
-var game = new Game(document.getElementById('canv'));
+class Background extends GameObject {
+  constructor() {
+    super();
+    let imageUrls = ['./images/cyberpunk-street.png']
+    this.images = [];
+    this.images = imageUrls.map((v) => { let img = new Image(); img.src = v; return img; });
+  }
+  init() {
+    this.x = 0;
+  }
+  render(ctx) {
+    ctx.save();
+    ctx.translate(this.x, 0);
+    let building = -(this.x/4) % 540;
+    ctx.drawImage(this.images[0], building, 0, 540, 540); // 하늘은 움직이지 않으니까 일단 걍 그려주자.
+    ctx.drawImage(this.images[0], building+540, 0, 540, 540); // 하늘은 움직이지 않으니까 일단 걍 그려주자.
+    ctx.restore();
+  }
+}
+
+const game = new Game(document.getElementById('canv'));
 game.push(new GameScene());
 game.update();

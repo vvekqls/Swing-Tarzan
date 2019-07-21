@@ -81,8 +81,8 @@ class Sprite {
     if (opt && opt.rotate) { ctx.rotate(-opt.rotate); } // 회전 각도가 있다면 회전해주고
     // 원본 이미지에서 스프라이트만큼 잘라내서
     // 크기 조절에 맞춰서 찍어준다.
-    ctx.drawImage(this.img, this.sx, this.sy, this.sw, this.sh,
-      -this.ox * scale, -this.oy * scale, this.sw * scale, this.sh * scale);
+    /* ctx.drawImage(this.img, this.sx, this.sy, this.sw, this.sh,
+                 -this.ox * scale, -this.oy * scale, this.sw*scale, this.sh * scale); */
 
     ctx.restore();
   }
@@ -275,22 +275,19 @@ class GameScene extends Scene {
   }
 
   init() {
-    this.cameraX = 200;
+    //this.character.setPivot({x:240, y:0});
   }
 
   update(timeDelta, key) {
     super.update(timeDelta);
-    this.cameraX = Math.max(this.cameraX, this.character.x);
     if (key === 32) {
-      var tx = Math.cos(Math.PI / 4) * this.character.y + this.character.x;
-      this.character.setPivot({ x: tx, y: 0 });
+      this.character.setPivot({ x: 240, y: 0 });
     }
 
   }
 
   render(ctx) {
     ctx.save();
-    ctx.translate(-this.cameraX + 200, 0);
     super.render(ctx);
     ctx.restore();
 
@@ -308,7 +305,7 @@ class Character extends GameObject {
     // 이 내용은 아래의 '캐릭터 애니메이션' 부분에서 다룰테니 기둘!
     super();
     this.img = new Image();
-    this.img.src = "http://web.lazygyu.net/test/whip/images/eclipse_sprites.png"; //각자 자신의 이미지 주소를 넣자
+    this.img.src = "./ images / spiderman.png"; //각자 자신의 이미지 주소를 넣자
     this.spriteSheet = new SpriteSheet(this.img, SpriteDefs.character); //캐릭트 스프라이트 시트
     this.animations = {}; //애니메이션들을 모아둘 컨테이너
     //애니메이션 정의에 맞춰서 컨테이너에 애니메이션을 생성해서 넣는다.
@@ -323,7 +320,7 @@ class Character extends GameObject {
     // 일단 현재 위치를 나타내는 변수를 만들어봤다.
     this.x = 50;
     this.y = 50;
-    this.gravity = 9; //일단 대충 10으로 해보자.
+    this.gravity = 10; //일단 대충 10으로 해보자.
     this.pivot = null; //이건 줄이 걸린 좌표를 나타내는 변수다. null 이면 안 걸린거
     this.position = null; //이건 줄에 대한 캐릭터의 상대 좌표
     this.force = { x: 0, y: 0 };
