@@ -1,11 +1,11 @@
 const SpriteDefs = {
   "character": [
-    { x: 185, y: 140, w: 40, h: 41, origin: { x: 30, y: 20 } },
-    { x: 380, y: 140, w: 40, h: 45, origin: { x: 30, y: 20 } },
-    { x: 425, y: 140, w: 40, h: 45, origin: { x: 24, y: 20 } },
-    { x: 275, y: 278, w: 40, h: 39, origin: { x: 30, y: 20 } },//fall
-    { x: 235, y: 278, w: 40, h: 39, origin: { x: 30, y: 20 } },//fall
-    { x: 442, y: 278, w: 40, h: 39, origin: { x: 30, y: 20 } },//fall
+    { x: 0, y: 0, w: 40, h: 40, origin: { x: 20, y: 20 } },
+    { x: 40, y: 0, w: 40, h: 40, origin: { x: 20, y: 20 } },
+    { x: 0, y: 40, w: 40, h: 39, origin: { x: 30, y: 20 } },
+    { x: 40, y: 40, w: 40, h: 39, origin: { x: 30, y: 20 } },
+    { x: 80, y: 40, w: 40, h: 39, origin: { x: 30, y: 20 } },
+    { x: 0, y: 80, w: 40, h: 41, origin: { x: 30, y: 20 } },
     { x: 40, y: 80, w: 40, h: 41, origin: { x: 30, y: 20 } },
     { x: 80, y: 80, w: 40, h: 41, origin: { x: 30, y: 20 } },
     { x: 0, y: 122, w: 40, h: 41, origin: { x: 30, y: 20 } },
@@ -23,11 +23,11 @@ const SpriteDefs = {
 };
 const AnimationDefs = {
   "character": {
-    "spin": [{ frame: 0, duration: 0.05 }, { frame: 0, duration: 0.05 }],
-    "forward": [{ frame: 2, duration: 0.08 }, { frame: 2, duration: 0.08 }, { frame: 2, duration: 0.08 }, { frame: 2, duration: 0.08 }],
-    "nutral": [{ frame: 2, duration: 0.15 }, { frame: 2, duration: 0.05 }, { frame: 2, duration: 0.10 }, { frame: 2, duration: 0.10 }],
-    "backward": [{ frame: 0, duration: 0.10 }, { frame: 0, duration: 0.05 }, { frame: 0, duration: 0.05 }, { frame: 0, duration: 0.05 }],
-    "fall": [{ frame: 2, duration: 0.05 }, { frame: 3, duration: 0.05 }, { frame: 3, duration: 0.05 }, { frame: 4, duration: 0.05 }],
+    "spin": [{ frame: 0, duration: 0.05 }, { frame: 1, duration: 0.05 }],
+    "forward": [{ frame: 2, duration: 0.08 }, { frame: 3, duration: 0.08 }, { frame: 4, duration: 0.08 }, { frame: 3, duration: 0.08 }],
+    "nutral": [{ frame: 5, duration: 0.05 }, { frame: 6, duration: 0.05 }, { frame: 7, duration: 0.05 }, { frame: 6, duration: 0.05 }],
+    "backward": [{ frame: 8, duration: 0.05 }, { frame: 9, duration: 0.05 }, { frame: 10, duration: 0.05 }, { frame: 9, duration: 0.05 }],
+    "fall": [{ frame: 11, duration: 0.05 }, { frame: 12, duration: 0.05 }, { frame: 13, duration: 0.05 }, { frame: 12, duration: 0.05 }],
     "sword": [{ frame: 14, duration: 1 }],
     "magnet_field": [{ frame: 15, duration: 0.05 }, { frame: 16, duration: 0.05 }, { frame: 17, duration: 0.05 }, { frame: 18, duration: 0.05 }]
   }
@@ -82,7 +82,7 @@ class Sprite {
     // 원본 이미지에서 스프라이트만큼 잘라내서
     // 크기 조절에 맞춰서 찍어준다.
     ctx.drawImage(this.img, this.sx, this.sy, this.sw, this.sh,
-                 -this.ox * scale, -this.oy * scale, this.sw*scale, this.sh * scale); 
+      -this.ox * scale, -this.oy * scale, this.sw * scale, this.sh * scale);
 
     ctx.restore();
   }
@@ -275,19 +275,22 @@ class GameScene extends Scene {
   }
 
   init() {
-    //this.character.setPivot({x:240, y:0});
+    this.cameraX = 200;
   }
 
   update(timeDelta, key) {
     super.update(timeDelta);
+    this.cameraX = Math.max(this.cameraX, this.character.x);
     if (key === 32) {
-      this.character.setPivot({ x: 240, y: 0 });
+      var tx = Math.cos(Math.PI / 4) * this.character.y + this.character.x;
+      this.character.setPivot({ x: tx, y: 0 });
     }
 
   }
 
   render(ctx) {
     ctx.save();
+    ctx.translate(-this.cameraX + 200, 0);
     super.render(ctx);
     ctx.restore();
 
@@ -305,7 +308,7 @@ class Character extends GameObject {
     // 이 내용은 아래의 '캐릭터 애니메이션' 부분에서 다룰테니 기둘!
     super();
     this.img = new Image();
-    this.img.src = "./images/spiderman.png" //각자 자신의 이미지 주소를 넣자
+    this.img.src = "http://web.lazygyu.net/test/whip/images/eclipse_sprites.png"; //각자 자신의 이미지 주소를 넣자
     this.spriteSheet = new SpriteSheet(this.img, SpriteDefs.character); //캐릭트 스프라이트 시트
     this.animations = {}; //애니메이션들을 모아둘 컨테이너
     //애니메이션 정의에 맞춰서 컨테이너에 애니메이션을 생성해서 넣는다.
@@ -320,7 +323,7 @@ class Character extends GameObject {
     // 일단 현재 위치를 나타내는 변수를 만들어봤다.
     this.x = 50;
     this.y = 50;
-    this.gravity = 10; //일단 대충 10으로 해보자.
+    this.gravity = 9; //일단 대충 10으로 해보자.
     this.pivot = null; //이건 줄이 걸린 좌표를 나타내는 변수다. null 이면 안 걸린거
     this.position = null; //이건 줄에 대한 캐릭터의 상대 좌표
     this.force = { x: 0, y: 0 };
@@ -410,7 +413,7 @@ class Character extends GameObject {
     ctx.translate(this.x, this.y);
     ctx.fillStyle = "red";
     ctx.beginPath();
-    // ctx.arc(0, 0, 20, 0, 2 * Math.PI); // 각도는 늘 라디안이라는 점을 잊지 말자!
+    ctx.arc(0, 0, 20, 0, 2 * Math.PI); // 각도는 늘 라디안이라는 점을 잊지 말자!
     ctx.fill();
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, 2, this.force.y * 20);
