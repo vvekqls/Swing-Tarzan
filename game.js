@@ -316,9 +316,11 @@ class GameScene extends Scene {
     this.character = new Character();
     this.background = new Background();
     this.terrain = new Terrain();
+    this.soundManager = new SoundManager();
     this.children.push(this.background);
     this.children.push(this.terrain);
     this.children.push(this.character);
+    this.character.sound = this.soundManager.play.bind(this.soundManager);
     this.state = 0;
   }
 
@@ -408,6 +410,7 @@ class Character extends GameObject {
   setPivot(point) {
     if (this.pivot === null) {
       // 현재 줄이 걸리지 않은 상태일때만 줄을 건다
+      this.sound('webs')
       this.pivot = point;
       this.pLen = Math.distance(this, this.pivot);
       this.position = { x: this.x - this.pivot.x, y: this.y - this.pivot.y };
@@ -533,6 +536,62 @@ class Background extends GameObject {
     ctx.restore();
   }
 }
+class SoundManager {
+  constructor() {
+    this.sounds = {};
+    this.enable = true;
+    this.soundFiles = ['webs'];
+    this.soundFiles.forEach((v) => {
+      this.sounds[v] = document.createElement("audio");
+      this.sounds[v].src = "./sounds/" + v + ".mp3";
+    });
+    // this.sounds.bgm.volume = 0.1;
+    // this.sounds.bgm.addEventListener("ended", (v) => {
+    //   this.sounds.bgm.currentTime = 0;
+    //   this.sounds.bgm.play();
+    // });
+  }
+
+  init() {
+    // this.bgm.play();
+  }
+
+  stop(name) {
+    this.sounds[name].pause();
+    this.sounds[name].currentTime = 0;
+  }
+
+  bgmStart() {
+    // this.stop('bgm');
+    //this.sounds.bgm.play();
+  }
+
+  bgmStop() {
+    // this.sounds.bgm.pause();
+  }
+
+  play(name) {
+    if (this.sounds[name]) {
+      this.stop(name);
+      this.sounds[name].play();
+    }
+  }
+
+  toggle() {
+    this.enable = !this.enable;
+    this.soundFiles.forEach((v) => {
+      this.sounds[v].volume = this.enable ? ((i == 'webs') ? 3 : 0.3) : 0;
+    });
+  }
+
+  distructor() {
+    this.soundFiles.forEach((v) => {
+      this.soundFiles[v].pause();
+      this.soundFiles[v] = null;
+    });
+  }
+}
+
 
 class Terrain extends GameObject {
   constructor() {
