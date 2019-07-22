@@ -9,7 +9,7 @@ const SpriteDefs = {
     { x: 286, y: 140, w: 45, h: 45, origin: { x: 30, y: 20 } },
     { x: 335, y: 140, w: 43, h: 45, origin: { x: 30, y: 20 } },
     { x: 0, y: 122, w: 40, h: 41, origin: { x: 30, y: 20 } },
-    { x: 40, y: 122, w: 40, h: 40, origin: { x: 30, y: 20 } },
+    { x: 405, y: 180, w: 30, h: 40, origin: { x: 12, y: 50 } },
     { x: 80, y: 122, w: 40, h: 40, origin: { x: 30, y: 20 } },
     { x: 0, y: 186, w: 40, h: 59, origin: { x: 20, y: 39 } },
     { x: 40, y: 186, w: 40, h: 59, origin: { x: 20, y: 39 } },
@@ -20,6 +20,7 @@ const SpriteDefs = {
     { x: 300, y: 260, w: 50, h: 50, origin: { x: 25, y: 25 } },
     { x: 350, y: 260, w: 50, h: 50, origin: { x: 25, y: 25 } }
   ]
+
 };
 const AnimationDefs = {
   "character": {
@@ -34,8 +35,35 @@ const AnimationDefs = {
   }
 };
 
+const tileSets = [
+  [5, 5, 6, 7, 6, 5],
+  [5, 10, 15, 15, 10, 8],
+  [5, 10, 15, 15, 18, 20, 16, 8],
+  [5, 8, 11, 14, 17, 20, 30, 20, 10],
+  [5, 30, 32, 34, 36, 30, 20],
+  [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 45, 40, 30, 20, 10],
+  [5, 20, 40, 60, 70, 80, 80, 70, 60, 50, 40, 30, 20, 10],
+  [5, 15, 20, 25, 30, 35, 50, 60, 70, 80, 90, 100, 100, 100, 90, 70, 50, 30, 10],
+  [20, 30, 40, 50, 60, 80, 100, 120, 140, 160, 180, 200, 200, 201, 201, 202, 202, 200, 198, 197, 198, 200, 80, 60, 40, 20],
+  [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 70, 90, 110, 130, 150, 170, 190, 210, 200, 190, 180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10]
+];
+
 Array.prototype.last = function () {
   return (this.length > 0) ? this[this.length - 1] : null;
+}
+Math.distanceToLine = function (pt, line) {
+  // 점에서 선분까지의 거리를 구하자
+  // line 은 [{x:x1,y:y1}, {x:x2, y:y2}]다.
+  let lineLength = Math.distance(line[0], line[1]);
+  if (lineLength == 0) return Math.distance(pt, line[0]); // 길이가 0인 선분과의 거리는 깔끔
+  let prj =
+    ((pt.x - line[0].x) * (line[1].x - line[0].x) + (pt.y - line[0].y) * (line[1].y - line[0].y)) / lineLength;
+  // 그림의 pt2와 같은 경우면 P1과의 거리를
+  if (prj < 0) return Math.distance(pt, line[0]);
+  // P2와 더 가까울 때(수선이 없을 때)는 P2와의 거리를
+  if (prj > lineLength) return Math.distance(pt, line[1]);
+  // 그 외에는 노멀 벡터의 길이를 반환하면 된다
+  return Math.abs(-(pt.x - line[0].x) * (line[1].y - line[0].y) + (pt.y - line[0].y) * (line[1].x - line[0].x)) / lineLength;
 }
 Math.distance = function (p1, p2) {
   // 두 점 간의 거리를 구하는 함수
@@ -59,6 +87,21 @@ Math.angle = function (p1, p2) {
 Math.getPoint = function (pt, deg, len) {
   // 한 점에서 특정 각도로 특정 거리 떨어진 점의 좌표를 구한다
   return { x: pt.x + (len * Math.cos(deg)), y: pt.y + (len * Math.sin(deg)) };
+}
+
+Math.lineToPoint = function (pt, line) {
+  return ((pt.y - line[0].y) * (line[1].x - line[0].x) - (pt.x - line[0].x) * (line[1].y - line[0].y));
+}
+
+Math.isCross = function (pt, line) {
+  // line1, line2 는 [{x,y}, {x,y}] 형태의 배열
+  // 우리의 게임에서는 반드시 [0]보다 [1]이 오른쪽에 있게 된다. 따라서 더 간단!
+  if (pt.y > line[0].y != pt.y > line[1].y) {
+    // y 좌표가 선에 걸쳐질때에만
+    let atX = (line[1].x - line[0].x) * (line[1].y - line[0].y) / (line[1].y - line[0].y) + line[0].x;
+    if (pt.x > atX) return true;
+  }
+  return false;
 }
 
 class Sprite {
@@ -272,26 +315,48 @@ class GameScene extends Scene {
     super();
     this.character = new Character();
     this.background = new Background();
+    this.terrain = new Terrain();
     this.children.push(this.background);
+    this.children.push(this.terrain);
     this.children.push(this.character);
+    this.state = 0;
   }
 
   init() {
     this.background.init();
     this.character.init();
+    this.terrain.init();
     this.cameraX = 250;
+    this.state = 0;
   }
 
   update(timeDelta, key) {
-    super.update(timeDelta);
-    this.cameraX = Math.max(this.cameraX, this.character.x);
-    this.background.x = this.cameraX - 250;
-    if (key === 32) {
-      // this.currentAnimation = "web"
-      let tx = Math.cos(Math.PI / 4) * this.character.y + this.character.x;
-      this.character.setPivot({ x: tx, y: 0 });
-    }
+    if (this.state == 0) {
 
+      this.elapsed += timeDelta;
+      this.children.forEach((ch) => {
+        ch.update(timeDelta, this.character);
+      });
+      super.update(timeDelta);
+      this.cameraX = Math.max(this.cameraX, this.character.x);
+      this.background.x = this.cameraX - 250;
+      this.terrain.lastX = this.cameraX - 250;
+      if (key === 32) {
+        // this.currentAnimation = "web"
+        let tx = Math.cos(Math.PI / 4) * this.character.y + this.character.x;
+        this.character.setPivot({ x: tx, y: 0 });
+      }
+      if (this.character.y > 540 || this.terrain.isHit(this.character)) {
+        this.terrain.fillStyle = "red";
+        this.state = 1;
+      } else {
+        this.terrain.fillStyle = "black";
+      }
+    } else {
+      if (key === 32) {
+        this.init();
+      }
+    }
   }
 
   render(ctx) {
@@ -322,6 +387,7 @@ class Character extends GameObject {
       if (!AnimationDefs.character.hasOwnProperty(i)) continue;
       this.animations[i] = new Animation(this.spriteSheet, AnimationDefs.character[i]);
     }
+    this.radius = 20;
   }
 
   init() {
@@ -417,15 +483,32 @@ class Character extends GameObject {
       ctx.moveTo(this.pivot.x , this.pivot.y);
       ctx.lineTo(this.pivot.x + 7 + this.position.x, this.pivot.y + this.position.y);
       ctx.stroke();
+      let tPt = {
+        x: this.x+3,
+        y: this.y
+      }; //시작점 
+      let target = {
+        x: this.pivot.x-3,
+        y: this.pivot.y
+      }; //목표점 
+      let ang = Math.atan2(target.y - tPt.y, target.x - tPt.x); // 각도를 구하자 
+      let dist = this.pLen /25; // 칼날 갯수만큼으로 나눠서 각 칼날의 간격을 구한다 
+      let bladeAngle = -ang - Math.PI / 2;
+      for (let i = 0; i < 25; i++) { //칼날은 열두개 
+        this.spriteSheet.get(9).draw(ctx, tPt.x, tPt.y, {
+          rotate: bladeAngle
+        }); // 각도에 맞춰서 그리고
+        tPt = Math.getPoint(tPt, ang, dist); // 간격만큼 이동 
+      }
     }
     ctx.translate(this.x, this.y);
-    ctx.fillStyle = "red";
+    // ctx.fillStyle = "red";
     ctx.beginPath();
     // ctx.arc(0, 0, 20, 0, 2 * Math.PI); // 각도는 늘 라디안이라는 점을 잊지 말자!
     ctx.fill();
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, 2, this.force.y * 20);
-    ctx.fillRect(0, 0, this.force.x * 20, 2);
+    // ctx.fillStyle = "black";
+    // ctx.fillRect(0, 0, 2, this.force.y * 20);
+    // ctx.fillRect(0, 0, this.force.x * 20, 2);
     ctx.restore();
     this.animations[this.currentAnimation].draw(ctx, this.x, this.y, {});
   }
@@ -447,6 +530,82 @@ class Background extends GameObject {
     let building = -(this.x/4) % 540;
     ctx.drawImage(this.images[0], building, 0, 540, 540); // 하늘은 움직이지 않으니까 일단 걍 그려주자.
     ctx.drawImage(this.images[0], building+540, 0, 540, 540); // 하늘은 움직이지 않으니까 일단 걍 그려주자.
+    ctx.restore();
+  }
+}
+
+class Terrain extends GameObject {
+  constructor() {
+    super();
+    this.points = []; //현재 지형 좌표를 보관할 배열
+    this.tileWidth = 540 / 50;
+    this.maxX = 0;
+    this.lastX = 0;
+    this.fillStyle = "black";
+  }
+
+  init() {
+    this.points = [];
+    this.lastX = 0;
+    this.maxX = 0;
+  }
+
+  addTile() {
+    while (this.points.length <= 55) {
+      let src = tileSets[Math.floor(Math.random() * tileSets.length) | 0];
+      src.forEach((y) => {
+        this.maxX += this.tileWidth;
+        this.points.push({ x: this.maxX, y: 540 - y });
+      });
+    }
+  }
+
+  isHit(character) {
+    // 지형을 이루는 각 선분과의 충돌을 체크하자
+    let firstPoint = { x: this.points[0].x, y: 540 };
+    let lastPoint = firstPoint;
+    let hit = false;
+    this.points.forEach((pt) => {
+      if (Math.distanceToLine(character, [lastPoint, pt]) < character.radius) {
+        hit = true;
+        return false;
+      }
+      lastPoint = pt;
+    });
+    if (hit) return true;
+    // 혹시 캐릭터가 지형 내부에 있는지도 체크하자
+    lastPoint = firstPoint;
+    let count = 0, cur = 1;
+    while (lastPoint.x < character.x) {
+      if (Math.isCross(character, [lastPoint, this.points[cur]])) count++;
+      lastPoint = this.points[cur];
+      cur++;
+    }
+    if (count > 0) console.log(count);
+    if (count % 2 == 0) return false;
+    return true;
+  }
+
+  update(timeDelta) {
+    super.update(timeDelta);
+    this.points = this.points.filter((pt) => { return pt.x + this.tileWidth > this.lastX; });
+    if (this.points.length < 55) this.addTile();
+  }
+
+  render(ctx) {
+    super.render(ctx);
+    // 아래는 현재 지형 배열을 그려주는 코드.. 내용은 별 거 없다.
+    if (this.points.length == 0) return;
+    ctx.save();
+    ctx.fillStyle = this.fillStyle;
+    ctx.beginPath();
+    ctx.moveTo(this.points[0].x, this.points[0].y);
+    this.points.forEach((pt) => {
+      ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.lineTo(this.points.last().x, 540);
+    ctx.lineTo(this.points[0].x, 540);
+    ctx.fill();
     ctx.restore();
   }
 }
