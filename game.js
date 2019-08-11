@@ -261,6 +261,7 @@ class Game {
       this.scenes.last().pause();
     }
     _scene.init(); // 새로 추가될 장면의 초기화 코드를 호출해준 뒤
+    _scene.on('push', this.sceneEventHandler.bind(this));
     this.scenes.push(_scene); // 스택에 새 장면을 넣어준다.
   }
 
@@ -277,12 +278,24 @@ class Game {
     // 그리고 어디다 쓰고 싶을 수도 있으니까 뽑아낸 장면을 반환한다.
     return sc;
   }
+
+  sceneEventHandler(type, arg) {
+    switch (type) {
+      case 'push':
+        this.push(arg);
+        break;
+      case 'pop':
+        this.pop();
+        break;
+    }
+  }
 }
 
 class Scene {
   constructor() {
     this.children = []; // 자식 객체들을 보관할 컨테이너
     this.elapsed = 0; // 이 게임 장면에서 경과한 시간
+    this.events = {};
   }
 
   init() {
@@ -293,6 +306,24 @@ class Scene {
     // 매 프레임 상태 업데이트를 처리하는 메소드
     this.elapsed += timeDelta;
     this.children.forEach((child) => { child.update(timeDelta); }); // 자녀 객체들의 업데이트를 호출
+  }
+  // 이벤트 핸들러 등록 메소드 
+  on(type, handler) {
+    // 핸들러 처음 정의될 때는 우선 핸들러 큐를 만들고 
+    if (!this.events[type]) {
+      this.events[type] = [];
+    }
+    // 이미 같은 핸들러가 이벤트에 등록되어 있으면 아무일도 하지 않고.. 
+    if (this.events[type].some(fn => fb == handler)) return;
+    // 그렇지 않은 경우에는 핸들러를 등록하자. 
+    this.events[type].push(handler);
+  }
+  // 이벤트 발생시키는 메소드 
+  fire(type, arg) { // 핸들러가 존재하면 
+    if (this.events[type]) {
+      // 호출해주면 끗 
+      this.events[type].forEach(fn => fn(type, arg));
+    }
   }
 
   render(ctx) {
@@ -384,7 +415,6 @@ class GameScene extends Scene {
       // UI 를 제외한 다른 자식들을 그려준다. 
       this.background.render(ctx);
       this.terrain.render(ctx);
-      this.itemManager.render(ctx);
       this.character.render(ctx);
       ctx.restore(); // 제한을 해제하고 
       this.ui.render(ctx); // UI를 그려주면 끗 
@@ -545,6 +575,30 @@ class Character extends GameObject {
   }
 }
 
+
+class GameStartScene extends Scene {
+  constructor() {
+    super();
+    this.bgImg = new Image();
+    this.bgImg.src = './images/title.png';
+    this.img = Images.sprites;
+    // 스타트 버튼을 누르라는 안내문구 
+    this.pressStart = new Sprite(this.img, 140, 375, 272, 25, 136, 0);
+  }
+  update(timeDelta, key, mouse) {
+    super.update(timeDelta);
+    if (key == 32) {
+      this.fire('push', new GameScene());
+    }
+  }
+  render(ctx) {
+    ctx.drawImage(this.bgImg, 0, 0);
+    if (this.elapsed % 1 < 0.5) {
+      this.pressStart.draw(ctx, 270, 425);
+    }
+  }
+}
+
 class Background extends GameObject {
   constructor() {
     super();
@@ -666,6 +720,7 @@ class UI extends GameObject {
   render(ctx) {
     ctx.save();
     ctx.translate(this.parent.cameraX - 200, 0);
+
     if (this.parent.state == 1) {
       ctx.globalAlpha = Math.max(0, 1 - this.parent.elapsed); // 1초간 페이드 아웃 
     }
