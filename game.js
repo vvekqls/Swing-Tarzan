@@ -373,12 +373,28 @@ class GameScene extends Scene {
 
   render(ctx) {
     ctx.save();
-    ctx.translate(-this.cameraX + 250, 0);
-    super.render(ctx);
+    ctx.translate(-this.cameraX + 200, 0);
+    if (this.state === 1) { // 게임오버 상태일 때 
+      // 경과 시간에 비례해 작아지는 반경을 구해서
+      let radius = (1.0 - Math.min(this.elapsed, 0.5) * 2) * 540;
+      ctx.save(); // 캐릭터 위치에서 해당 반경만큼의 원을 그리고
+      ctx.beginPath();
+      ctx.arc(this.character.x, this.character.y, this.character.radius * 2 + radius, 0, Math.PI * 2);
+      ctx.clip(); // 그 안쪽에만 그림이 그려지도록 제한한 뒤에 
+      // UI 를 제외한 다른 자식들을 그려준다. 
+      this.background.render(ctx);
+      this.terrain.render(ctx);
+      this.itemManager.render(ctx);
+      this.character.render(ctx);
+      ctx.restore(); // 제한을 해제하고 
+      this.ui.render(ctx); // UI를 그려주면 끗 
+    } else { // 게임중엔 걍 원래대로 다 그려버리면 된다.
+      super.render(ctx);
+    }
     ctx.restore();
-
   }
 }
+
 class GameObject {
   constructr() { 
     this.parent = null;
@@ -642,9 +658,9 @@ class UI extends GameObject {
     this.character = character;
 
     this.img = new Image();
-    // this.img.src = "http://web.lazygyu.net/test/whip/images/eclipse_sprites.png";
+    this.img.src = "./images/dungeon.png";
 
-    // this.coin = new Sprite(this.img, 300, 0, 40, 40, 0, 0);
+    this.gameover = new Sprite(this.img, 0, 400, 348, 81, 174, 0);
   }
 
   render(ctx) {
@@ -661,25 +677,15 @@ class UI extends GameObject {
     ctx.fillText(this.scoreManager.score + "m", 0, 540 - 35);
     ctx.strokeText(this.scoreManager.score + "m", 0, 540 - 35);
 
-    // 현재 코인 잔액 표시
-    // ctx.font = "bold 30px verdana";
-    // ctx.fillStyle = "#ffb82f";
-    // ctx.fillText(this.character.money, 35, 540 - 75);
-    // ctx.strokeText(this.character.money, 35, 540 - 75);
-    // this.coin.draw(ctx, 5, 440, { scale: 0.625 });
 
     // 최고기록 표시
     ctx.font = "16px verdana";
     ctx.strokeText("HIGHSCORE " + this.scoreManager.highscore + "m", 0, 540 - 17);
     ctx.fillText("HIGHSCORE " + this.scoreManager.highscore + "m", 0, 540 - 17);
-
-
-    // // mp 잔량 표시
-    // let mp = this.character.mp / 10 * 60; // 이미지 세로 크기인 60에 대한 비율로 나타내기 위해서...
-    // if (mp > 0) {
-    //   ctx.drawImage(this.img, 75, 395 - mp, 60, mp, 540 - 65, 540 - 5 - mp, 60, mp);
-    // }
-    // ctx.drawImage(this.img, 0, 330, 70, 70, 540 - 70, 540 - 70, 70, 70);
+    if (this.parent.state === 1) {
+      ctx.globalAlpha = Math.min(1, this.parent.elapsed);
+      this.gameover.draw(ctx, 540 / 2, 60);
+    }
 
     ctx.restore();
 
