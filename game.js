@@ -317,9 +317,16 @@ class GameScene extends Scene {
     this.background = new Background();
     this.terrain = new Terrain();
     this.soundManager = new SoundManager();
+    this.scoreManager = new ScoreManager();
+    this.ui = new UI(this.scoreManager, this.character);
+
     this.children.push(this.background);
     this.children.push(this.terrain);
     this.children.push(this.character);
+    this.children.push(this.ui)
+
+    this.children.forEach((ch) => { ch.parent = this; })
+    
     this.character.sound = this.soundManager.play.bind(this.soundManager);
     this.state = 0;
   }
@@ -328,6 +335,7 @@ class GameScene extends Scene {
     this.background.init();
     this.character.init();
     this.terrain.init();
+    this.scoreManager.reset();
     this.cameraX = 250;
     this.state = 0;
   }
@@ -341,6 +349,7 @@ class GameScene extends Scene {
       });
       super.update(timeDelta);
       this.cameraX = Math.max(this.cameraX, this.character.x);
+      this.scoreManager.score = Math.max(0, ((this.cameraX - 100) / 10) | 0);
       this.background.x = this.cameraX - 250;
       this.terrain.lastX = this.cameraX - 250;
       if (key === 32) {
@@ -370,7 +379,9 @@ class GameScene extends Scene {
   }
 }
 class GameObject {
-  constructr() { }
+  constructr() { 
+    this.parent = null;
+  }
   init() { }
   update(timeDelta) { }
   render(ctx) { }
@@ -536,6 +547,7 @@ class Background extends GameObject {
     ctx.restore();
   }
 }
+
 class SoundManager {
   constructor() {
     this.sounds = {};
@@ -589,6 +601,84 @@ class SoundManager {
       this.soundFiles[v].pause();
       this.soundFiles[v] = null;
     });
+  }
+}
+
+class ScoreManager {
+  constructor() {
+    this.highscore = localStorage.getItem("highscore") || 0;
+    this.gotCoin = 0;
+    this.usedCoin = 0;
+    this._score = 0;
+  }
+
+  reset() {
+    this._score = 0;
+    this.gotCoin = 0;
+    this.usedCoin = 0;
+  }
+
+  save() {
+    if (this.highscore > 0) {
+      localStorage.setItem("highscore", this.highscore);
+    }
+  }
+
+  set score(v) {
+    this._score = v;
+    if (this._score > this.highscore) this.highscore = this._score;
+  }
+
+  get score() {
+    return this._score;
+  }
+}
+
+class UI extends GameObject {
+  constructor(scoremanager, character) {
+    super();
+    this.scoreManager = scoremanager;
+    this.character = character;
+
+    this.img = new Image();
+    // this.img.src = "http://web.lazygyu.net/test/whip/images/eclipse_sprites.png";
+
+    // this.coin = new Sprite(this.img, 300, 0, 40, 40, 0, 0);
+  }
+
+  render(ctx) {
+    ctx.save();
+    ctx.translate(this.parent.cameraX - 200, 0);
+    // 현재 점수 표시
+    ctx.fillStyle = "white";
+    ctx.strokeStyle = "black";
+    ctx.strokeWidth = 2;
+    ctx.font = "bold 40px verdana";
+    ctx.fillText(this.scoreManager.score + "m", 0, 540 - 35);
+    ctx.strokeText(this.scoreManager.score + "m", 0, 540 - 35);
+
+    // 현재 코인 잔액 표시
+    // ctx.font = "bold 30px verdana";
+    // ctx.fillStyle = "#ffb82f";
+    // ctx.fillText(this.character.money, 35, 540 - 75);
+    // ctx.strokeText(this.character.money, 35, 540 - 75);
+    // this.coin.draw(ctx, 5, 440, { scale: 0.625 });
+
+    // 최고기록 표시
+    ctx.font = "16px verdana";
+    ctx.strokeText("HIGHSCORE " + this.scoreManager.highscore + "m", 0, 540 - 17);
+    ctx.fillText("HIGHSCORE " + this.scoreManager.highscore + "m", 0, 540 - 17);
+
+
+    // // mp 잔량 표시
+    // let mp = this.character.mp / 10 * 60; // 이미지 세로 크기인 60에 대한 비율로 나타내기 위해서...
+    // if (mp > 0) {
+    //   ctx.drawImage(this.img, 75, 395 - mp, 60, mp, 540 - 65, 540 - 5 - mp, 60, mp);
+    // }
+    // ctx.drawImage(this.img, 0, 330, 70, 70, 540 - 70, 540 - 70, 70, 70);
+
+    ctx.restore();
+
   }
 }
 
