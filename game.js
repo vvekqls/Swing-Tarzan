@@ -360,6 +360,7 @@ class GameScene extends Scene {
       if (this.character.y > 540 || this.terrain.isHit(this.character)) {
         this.terrain.fillStyle = "red";
         this.state = 1;
+        this.elpased = 0;
       } else {
         this.terrain.fillStyle = "black";
       }
@@ -649,6 +650,9 @@ class UI extends GameObject {
   render(ctx) {
     ctx.save();
     ctx.translate(this.parent.cameraX - 200, 0);
+    if (this.parent.state == 1) {
+      ctx.globalAlpha = Math.max(0, 1 - this.parent.elapsed); // 1초간 페이드 아웃 
+    }
     // 현재 점수 표시
     ctx.fillStyle = "white";
     ctx.strokeStyle = "black";
