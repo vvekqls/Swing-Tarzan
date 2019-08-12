@@ -221,11 +221,24 @@ class Game {
     this.last = 0;
     this.elapsed = 0;
     this.timeDelta = 0;
-
+    this.paused = false; 
+    
     //키보드 입력용 변수
     this.key = null;
     // this가 뭘 가리키는건지 애매해지지 않도록 바인드해서 넘겨주는 센스
     document.addEventListener("keydown", this.keyHandler.bind(this), false);
+    window.addEventListener('focus', this.focusHandler.bind(this), false);
+    window.addEventListener('blur', this.blurHandler.bind(this), false);
+
+  }
+
+  blurHandler() { 
+    this.paused = true; 
+  } 
+
+  focusHandler() {
+    this.now = this.last = performance.now(); // 일시 정지된 동안의 시간 경과를 무시하도록 
+    this.paused = false; 
   }
 
   keyHandler(e) {
@@ -236,22 +249,35 @@ class Game {
     }
   }
 
+  sceneEventHandler(type, arg) {
+    switch (type) {
+      case 'push':
+        this.push(arg);
+        break;
+      case 'pop':
+        this.pop();
+        break;
+    }
+  }
+
   // 게임 루프용 메소드
   // 이 메소드가 매 프레임(1/60초)마다 실행된다.
   update() {
-    this.last = this.now;
-    this.now = performance.now(); // 현재 시간
-    this.timeDelta = (this.now - this.last) / 1000; // 지난 프레임과의 경과시간을 초 단위로 환산
-    this.elapsed += this.timeDelta; // 게임이 시작된 후 경과된 전체 시간
-
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // 화면을 매 프레임 지워준다.
+    // 일시정지된 동안은 시간이 흐르지 않게 해주자. 사실 안 그래도 상관은 없지만..
+    if (!this.paused) {
+      this.last = this.now;
+      this.now = performance.now();
+      this.timeDelta = (this.now - this.last) / 1000;
+      this.elapsed += this.timeDelta;
+    }
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     if (this.scenes.length > 0) {
-      // 처리해야 할 장면이 있을 경우에만
-      this.scenes.last().update(this.timeDelta, this.key); // 활성화된 장면을 갱신
-      this.scenes.last().render(this.ctx); // 활성화된 장면을 그려줌
+      // 일시정지중이면 씬의 update 호출을 하지 말자.
+      if (!this.paused) this.scenes.last().update(this.timeDelta, this.key);
+      this.scenes.last().render(this.ctx);
     }
     this.key = null;
-    requestAnimationFrame(this.update.bind(this)); // 1/60초 후에 다시 실행
+    requestAnimationFrame(this.update.bind(this));
   }
 
   // 장면을 새로 전환할 때는 스택에 새로운 장면을 넣어주면 된다
@@ -260,6 +286,7 @@ class Game {
       // 혹시 실행되고 있는 장면이 있을 경우 해당 장면에 정지 신호를 보내주고
       this.scenes.last().pause();
     }
+    _scene.parent = this;
     _scene.init(); // 새로 추가될 장면의 초기화 코드를 호출해준 뒤
     _scene.on('push', this.sceneEventHandler.bind(this));
     this.scenes.push(_scene); // 스택에 새 장면을 넣어준다.
@@ -278,17 +305,6 @@ class Game {
     // 그리고 어디다 쓰고 싶을 수도 있으니까 뽑아낸 장면을 반환한다.
     return sc;
   }
-
-  sceneEventHandler(type, arg) {
-    switch (type) {
-      case 'push':
-        this.push(arg);
-        break;
-      case 'pop':
-        this.pop();
-        break;
-    }
-  }
 }
 
 class Scene {
@@ -297,9 +313,29 @@ class Scene {
     this.elapsed = 0; // 이 게임 장면에서 경과한 시간
     this.events = {};
   }
+  
+  on(type, handler) {
+    
+    // 핸들러 처음 정의될 때는 우선 핸들러 큐를 만들고 
+    if (!this.events[type]) {
+      this.events[type] = [];
+    }
+    // 이미 같은 핸들러가 이벤트에 등록되어 있으면 아무일도 하지 않고.. 
+    if (this.events[type].some(fn => fn == handler)) return;
+    // 그렇지 않은 경우에는 핸들러를 등록하자. 
+    this.events[type].push(handler);
+  }
+  // 이벤트 발생시키는 메소드 
+  fire(type, arg) { // 핸들러가 존재하면 
+    if (this.events[type]) {
+      // 호출해주면 끗 
+      // debugger
+      this.events[type].forEach(fn => fn(type, arg));
+    }
+  }
 
   init() {
-    // 일반적으로는 할 일이 없으니 냅두자
+    
   }
 
   update(timeDelta) {
@@ -308,23 +344,6 @@ class Scene {
     this.children.forEach((child) => { child.update(timeDelta); }); // 자녀 객체들의 업데이트를 호출
   }
   // 이벤트 핸들러 등록 메소드 
-  on(type, handler) {
-    // 핸들러 처음 정의될 때는 우선 핸들러 큐를 만들고 
-    if (!this.events[type]) {
-      this.events[type] = [];
-    }
-    // 이미 같은 핸들러가 이벤트에 등록되어 있으면 아무일도 하지 않고.. 
-    if (this.events[type].some(fn => fb == handler)) return;
-    // 그렇지 않은 경우에는 핸들러를 등록하자. 
-    this.events[type].push(handler);
-  }
-  // 이벤트 발생시키는 메소드 
-  fire(type, arg) { // 핸들러가 존재하면 
-    if (this.events[type]) {
-      // 호출해주면 끗 
-      this.events[type].forEach(fn => fn(type, arg));
-    }
-  }
 
   render(ctx) {
     // 화면에 장면을 그리는 메소드. ctx 는 캔버스의 2d 컨텍스트 객체가 된다.
@@ -338,6 +357,32 @@ class Scene {
 
   resume() {
     // 마찬가지로 비워둠
+  }
+}
+
+class GameStartScene extends Scene {
+  constructor() {
+    super();
+    this.bgImg = new Image();
+    this.bgImg.src = './images/title.png';
+    this.img = new Image();
+    this.img.src = './images/dungeon.png'
+    // 스타트 버튼을 누르라는 안내문구 
+    this.pressStart = new Sprite(this.img, 140, 375, 272, 25, 136, 0);
+    
+  }
+  update(timeDelta, key) {
+    super.update(timeDelta);
+    if (key == 32) {
+      this.fire('push', new GameScene());
+    }
+  }
+
+  render(ctx) {
+    ctx.drawImage(this.bgImg, 0, 0);
+    if (this.elapsed % 1 < 0.5) {
+      this.pressStart.draw(ctx, 270, 425);
+    }
   }
 }
 
@@ -415,6 +460,7 @@ class GameScene extends Scene {
       // UI 를 제외한 다른 자식들을 그려준다. 
       this.background.render(ctx);
       this.terrain.render(ctx);
+      
       this.character.render(ctx);
       ctx.restore(); // 제한을 해제하고 
       this.ui.render(ctx); // UI를 그려주면 끗 
@@ -433,6 +479,7 @@ class GameObject {
   update(timeDelta) { }
   render(ctx) { }
 }
+
 class Character extends GameObject {
   constructor() {
     // 생성자에서는 캐릭터에 사용될 이미지를 만들고 애니메이션들을 생성해야 한다.
@@ -530,7 +577,10 @@ class Character extends GameObject {
       } else {
         this.currentAnimation = "nutral";
       }
+      
+      
     }
+    // debugger
     this.animations[this.currentAnimation].update(timeDelta);
   }
 
@@ -571,30 +621,11 @@ class Character extends GameObject {
     // ctx.fillRect(0, 0, 2, this.force.y * 20);
     // ctx.fillRect(0, 0, this.force.x * 20, 2);
     ctx.restore();
-    this.animations[this.currentAnimation].draw(ctx, this.x, this.y, {});
-  }
-}
-
-
-class GameStartScene extends Scene {
-  constructor() {
-    super();
-    this.bgImg = new Image();
-    this.bgImg.src = './images/title.png';
-    this.img = Images.sprites;
-    // 스타트 버튼을 누르라는 안내문구 
-    this.pressStart = new Sprite(this.img, 140, 375, 272, 25, 136, 0);
-  }
-  update(timeDelta, key, mouse) {
-    super.update(timeDelta);
-    if (key == 32) {
-      this.fire('push', new GameScene());
-    }
-  }
-  render(ctx) {
-    ctx.drawImage(this.bgImg, 0, 0);
-    if (this.elapsed % 1 < 0.5) {
-      this.pressStart.draw(ctx, 270, 425);
+    
+    if (!this.currentAnimation) {
+      this.animations['forward'].draw(ctx, this.x, this.y, {});
+    } else {
+      this.animations[this.currentAnimation].draw(ctx, this.x, this.y, {});
     }
   }
 }
@@ -825,5 +856,7 @@ class Terrain extends GameObject {
 }
 
 const game = new Game(document.getElementById('canv'));
-game.push(new GameScene());
+game.push(new GameStartScene());
+// game.pop();
+// game.push(new GameScene)
 game.update();
